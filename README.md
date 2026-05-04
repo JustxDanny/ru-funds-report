@@ -11,7 +11,7 @@ monthly statements.
 ## Quickstart
 
 ```bash
-git clone https://github.com/<you>/ru-funds-report
+git clone https://github.com/JustxDanny/ru-funds-report
 cd ru-funds-report
 python -m pip install -e .
 cp .env.example .env                          # then fill in the bot token
