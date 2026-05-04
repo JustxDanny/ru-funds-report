@@ -1,0 +1,85 @@
+# Production fund list. To extend, add entries — full inventory in discovery.json.
+# parser: 'wealthim_xlsx' (authoritative xlsx export, 4-decimal precision)
+#         'firstam_chart' (embedded chartData JSON, full precision)
+
+funds:
+  # ── УК «ВИМ Инвестиции» (wealthim.ru) ────────────────────────────────────
+  - code: WIM2OFZ
+    name: 2х ОФЗ
+    kind: БПИФ
+    manager: ВИМ Инвестиции
+    parser: wealthim_xlsx
+    url: https://www.wealthim.ru/products/bpif/wim2ofz/
+
+  - code: WIMFK
+    name: ВИМ – Казначейский
+    kind: ОПИФ
+    manager: ВИМ Инвестиции
+    parser: wealthim_xlsx
+    url: https://www.wealthim.ru/products/pif/opif/wimfk/
+
+  - code: WIMFRB
+    name: Российские облигации
+    kind: БПИФ
+    manager: ВИМ Инвестиции
+    parser: wealthim_xlsx
+    url: https://www.wealthim.ru/products/bpif/wimfrb/
+
+  - code: WIMFG
+    name: Золото. Биржевой
+    kind: БПИФ
+    manager: ВИМ Инвестиции
+    parser: wealthim_xlsx
+    url: https://www.wealthim.ru/products/bpif/wimfg/
+
+  - code: WIMFBR
+    name: ВИМ – Облигации. Российские эмитенты
+    kind: ОПИФ
+    manager: ВИМ Инвестиции
+    parser: wealthim_xlsx
+    url: https://www.wealthim.ru/products/pif/opif/wimfbr/
+
+  # ── УК «Первая» (first-am.ru) ────────────────────────────────────────────
+  - code: SBGD
+    name: Фонд Доступное золото
+    kind: БПИФ
+    manager: Первая
+    parser: firstam_chart
+    url: https://www.first-am.ru/individuals/etf/etf-sbgd
+
+  - code: PIF-RS
+    name: Фонд Рублевые сбережения
+    kind: ОПИФ
+    manager: Первая
+    parser: firstam_chart
+    url: https://www.first-am.ru/individuals/fund/opif-obligatsiy-fond-ros-obligatsiy
+
+  - code: SBLB
+    name: Фонд Долгосрочные гособлигации
+    kind: БПИФ
+    manager: Первая
+    parser: firstam_chart
+    url: https://www.first-am.ru/individuals/etf/etf-sblb
+
+  - code: SBRB
+    name: Фонд Корпоративные облигации
+    kind: БПИФ
+    manager: Первая
+    parser: firstam_chart
+    url: https://www.first-am.ru/individuals/etf/corporate-bonds-rub
+
+  - code: SBGB
+    name: Фонд Государственные облигации
+    kind: БПИФ
+    manager: Первая
+    parser: firstam_chart
+    url: https://www.first-am.ru/individuals/etf/etf-ofz
+
+# Anomaly thresholds applied to every report:
+sanity:
+  # Daily |Δ| above this gets flagged in the report (likely site error or notable event)
+  flag_daily_pct_above: 3.0
+  # Reject NAV history if latest data is older than this many calendar days
+  max_staleness_days: 7
+  # Cumulative-vs-sum rounding tolerance for cross-validation
+  cross_validate_tolerance_pct: 0.0001

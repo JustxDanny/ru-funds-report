@@ -1,0 +1,27 @@
+# Secrets — must never be committed.
+.env
+
+# Generated reports.
+out/
+
+# Cached HTML/JS/xlsx from ad-hoc investigation.
+*.html
+*.js
+*.xlsx
+!tests/fixtures/*.html
+!tests/fixtures/*.xlsx
+
+# Python.
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+.venv/
+venv/
+
+# Editor / agent state.
+.claude/
+.vscode/
+.idea/

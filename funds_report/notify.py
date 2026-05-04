@@ -1,0 +1,54 @@
+"""Telegram delivery. One bot, N recipients. Plain text caption (HTML escapes the names)."""
+
+from __future__ import annotations
+
+import html
+import logging
+from pathlib import Path
+
+import httpx
+
+from .config import Fund
+from .metrics import FundReport
+
+log = logging.getLogger(__name__)
+
+XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+class TelegramError(RuntimeError):
+    """Telegram API returned non-OK. Caller logs and continues with other recipients."""
+
+
+def send_document(token: str, chat_id: str, file_path: Path, caption: str,
+                  timeout: float = 60.0) -> dict:
+    url = f"https://api.telegram.org/bot{token}/sendDocument"
+    with open(file_path, "rb") as f:
+        files = {"document": (file_path.name, f, XLSX_MIME)}
+        data = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
+        r = httpx.post(url, files=files, data=data, timeout=timeout)
+    body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+    if r.status_code != 200 or not body.get("ok"):
+        raise TelegramError(f"HTTP {r.status_code}: {body or r.text}")
+    return body
+
+
+def build_caption(period_label: str,
+                  left: list[tuple[Fund, FundReport]],
+                  right: list[tuple[Fund, FundReport]]) -> str:
+    """HTML-escaped caption with a per-fund total. Manager-grouped."""
+    lines = [
+        "<b>Отчёт по стоимости пая</b>",
+        f"<i>{html.escape(period_label)}</i>",
+        "",
+        "<b>УК «ВИМ Инвестиции»:</b>",
+    ]
+    for fund, rep in left:
+        sign = "+" if rep.total_pct >= 0 else ""
+        lines.append(f"• {html.escape(fund.name)}: {sign}{rep.total_pct:.4f}%")
+    lines.append("")
+    lines.append("<b>УК «Первая»:</b>")
+    for fund, rep in right:
+        sign = "+" if rep.total_pct >= 0 else ""
+        lines.append(f"• {html.escape(fund.name)}: {sign}{rep.total_pct:.4f}%")
+    return "\n".join(lines)
