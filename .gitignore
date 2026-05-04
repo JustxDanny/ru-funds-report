@@ -4,6 +4,12 @@
 # Generated reports.
 out/
 
+# Scheduled-task runtime logs.
+logs/
+
+# Rendered task XML — install_task.ps1 generates from .tmpl per machine.
+taskscheduler/funds-report.xml
+
 # Cached HTML/JS/xlsx from ad-hoc investigation.
 *.html
 *.js

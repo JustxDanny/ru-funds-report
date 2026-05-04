@@ -93,8 +93,16 @@ python scripts/get_chat_ids.py
 python -m funds_report --days 4
 ```
 
-Schedule via Windows Task Scheduler (Mon + Fri 09:00 local). PC must be
-configured with "wake to run task" if it sleeps.
+Schedule via Windows Task Scheduler (Mon + Fri 09:00 local):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install_task.ps1
+```
+
+The installer renders `taskscheduler/funds-report.xml.tmpl` with this machine's
+absolute paths and registers the task. `WakeToRun=true` is set, so a sleeping
+PC wakes for the trigger. Logs land in `logs/`; uninstall with
+`schtasks /delete /tn funds-report /f`.
 
 ## Tests
 

@@ -54,6 +54,9 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     logging.basicConfig(
+        # Stdout, not stderr — Task Scheduler / PowerShell wrap stderr lines as
+        # NativeCommandError records, which breaks the wrapper script.
+        stream=sys.stdout,
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
