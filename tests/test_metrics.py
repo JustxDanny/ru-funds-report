@@ -84,13 +84,27 @@ def test_period_label_russian_grammar():
     history = _hist([Decimal("100"), Decimal("101"), Decimal("102"), Decimal("103"), Decimal("104")])
     rep = compute_report(history, n_days=4, sanity=SANITY)
     label = period_label([rep])
-    assert "с " in label and " по " in label
+    assert " по " in label
     # Genitive forms end in -а/-ы/-я
     parts = label.split(" по ")
-    head = parts[0]  # "с понедельника DD.MM.YYYY"
-    weekday_word = head.split(" ")[1]
+    weekday_word = parts[0].split(" ")[1]  # word AFTER the preposition
     assert weekday_word.endswith(("а", "ы", "я", "и", "е"))
     assert "торг. дн" in label
+
+
+def test_period_label_uses_so_before_sreda():
+    """Russian: preposition 'с' becomes 'со' before consonant cluster 'ср'."""
+    from funds_report.metrics import DayDelta, FundReport, period_label
+    wed = date(2026, 4, 22)         # Wednesday
+    thu = date(2026, 4, 23)
+    rep = FundReport(
+        baseline_date=wed, baseline_nav=Decimal("100"),
+        deltas=[DayDelta(date=thu, nav=Decimal("101"),
+                         delta_pct=Decimal("1"), cumulative_pct=Decimal("1"))],
+        total_pct=Decimal("1"),
+    )
+    label = period_label([rep])
+    assert label.startswith("со среды"), f"expected 'со среды …', got: {label!r}"
 
 
 @pytest.mark.parametrize("n,expected", [

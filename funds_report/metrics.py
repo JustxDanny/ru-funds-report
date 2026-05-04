@@ -102,8 +102,10 @@ def compute_report(history: list[tuple[date, Decimal]], n_days: int, sanity: San
 
 
 # Russian grammar helpers — small enough to live with the metrics they label.
-WEEKDAYS_GEN = ["понедельника", "вторника", "среды", "четверга",
-                "пятницы", "субботы", "воскресенья"]
+# WEEKDAY_FROM bakes in the preposition because "с" → "со" before the consonant
+# cluster "ср" (среда). Mon=0…Sun=6.
+WEEKDAY_FROM = ["с понедельника", "с вторника", "со среды", "с четверга",
+                "с пятницы", "с субботы", "с воскресенья"]
 WEEKDAYS_ACC = ["понедельник", "вторник", "среду", "четверг",
                 "пятницу", "субботу", "воскресенье"]
 
@@ -123,6 +125,6 @@ def period_label(reports: list[FundReport]) -> str:
     latests = [r.deltas[-1].date for r in reports]
     d_from, d_to = min(baselines), max(latests)
     n_days = max(len(r.deltas) for r in reports)
-    return (f"с {WEEKDAYS_GEN[d_from.weekday()]} {d_from.strftime('%d.%m.%Y')} "
+    return (f"{WEEKDAY_FROM[d_from.weekday()]} {d_from.strftime('%d.%m.%Y')} "
             f"по {WEEKDAYS_ACC[d_to.weekday()]} {d_to.strftime('%d.%m.%Y')} "
             f"({plural_days(n_days)})")

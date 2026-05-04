@@ -22,11 +22,11 @@ log = logging.getLogger("funds_report")
 
 
 def determine_days(arg_days: int | None) -> int:
-    """Mon → 1 trading day, Fri → 4. Manual run → 5."""
+    """Mon → 3 trading days (prev week's Wed/Thu/Fri recap), Fri → 4 (current Mon-Thu)."""
     if arg_days is not None:
         return arg_days
     wd = datetime.now(MSK).weekday()
-    return {0: 1, 4: 4}.get(wd, 5)
+    return {0: 3, 4: 4}.get(wd, 5)
 
 
 def collect(funds: list[Fund], n_days: int, sanity) -> list[tuple[Fund, FundReport]]:
