@@ -20,16 +20,25 @@ class TelegramError(RuntimeError):
     """Telegram API returned non-OK. Caller logs and continues with other recipients."""
 
 
+def _redact(s: str, token: str) -> str:
+    # Token sits in the URL path; any httpx error message echoing the URL would leak it
+    # to logs/*.log (run_scheduled.ps1 redirects stderr → log file).
+    return s.replace(token, "[REDACTED_TOKEN]") if token else s
+
+
 def send_document(token: str, chat_id: str, file_path: Path, caption: str,
                   timeout: float = 60.0) -> dict:
     url = f"https://api.telegram.org/bot{token}/sendDocument"
-    with open(file_path, "rb") as f:
-        files = {"document": (file_path.name, f, XLSX_MIME)}
-        data = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
-        r = httpx.post(url, files=files, data=data, timeout=timeout)
+    try:
+        with open(file_path, "rb") as f:
+            files = {"document": (file_path.name, f, XLSX_MIME)}
+            data = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
+            r = httpx.post(url, files=files, data=data, timeout=timeout)
+    except httpx.HTTPError as e:
+        raise TelegramError(f"transport: {_redact(str(e), token)}") from None
     body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
     if r.status_code != 200 or not body.get("ok"):
-        raise TelegramError(f"HTTP {r.status_code}: {body or r.text}")
+        raise TelegramError(f"HTTP {r.status_code}: {_redact(str(body or r.text), token)}")
     return body
 
 
