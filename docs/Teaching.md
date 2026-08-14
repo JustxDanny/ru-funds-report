@@ -369,13 +369,15 @@ ru-funds-report/
 │   ├── discover_funds.py   ← enumerate all funds + rank by 1-year return
 │   └── get_chat_ids.py     ← print recipient chat_ids after they /start the bot
 ├── tests/                  ← pytest (no network, no clock — pure tests)
-├── funds.yaml              ← which funds + sanity thresholds (anomaly flag, staleness)
+├── data/
+│   ├── funds.yaml          ← which funds + sanity thresholds (anomaly flag, staleness)
+│   └── discovery.json      ← snapshot of every fund's 1-year return
+├── docs/
+│   ├── BUILDLOG.md         ← agentic dev journal — how this was built
+│   └── Teaching.md         ← this file
 ├── .env                    ← bot token + recipient chat_ids (gitignored)
-├── discovery.json          ← snapshot of every fund's 1-year return
 ├── pyproject.toml          ← Python project metadata + dependencies
-├── README.md               ← short overview, quickstart
-├── BUILDLOG.md             ← agentic dev journal — how this was built
-└── Teaching.md             ← this file
+└── README.md               ← short overview, quickstart
 ```
 
 **To run the report manually:**

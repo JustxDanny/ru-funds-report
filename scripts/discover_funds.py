@@ -145,7 +145,7 @@ def main() -> int:
     show_top("wealthim.ru", [r for r in results if r["manager"] == "ВИМ Инвестиции"])
     show_top("first-am.ru", [r for r in results if r["manager"] == "Первая"])
 
-    out = ROOT / "discovery.json"
+    out = ROOT / "data" / "discovery.json"
     out.write_text(json.dumps(results, ensure_ascii=False, indent=2, default=str),
                    encoding="utf-8")
     print(f"\n[saved] {out}")

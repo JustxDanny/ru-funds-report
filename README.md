@@ -1,129 +1,167 @@
 # ru-funds-report
 
-Twice-weekly NAV report for Russian mutual funds. Pulls стоимость пая from
-[wealthim.ru](https://www.wealthim.ru) and [first-am.ru](https://www.first-am.ru),
-computes per-day deltas + cumulative for the chosen window, builds an Excel and
-sends it via Telegram.
+**A Telegram bot that keeps an investor close to his funds.**
 
-Built to help a friend track real-time fund movement instead of waiting on
-monthly statements.
+*[Читать на русском →](README.ru.md)*
 
-## Quickstart
+---
+
+## The problem
+
+A friend of mine invests in Russian mutual funds (ПИФы). His fund managers send
+him a statement **once a month**. By the time it lands, the numbers are history —
+he's reacting to something that already happened.
+
+He didn't want a trading terminal. He wanted the answer to one question, twice a
+week, in the app he already has open:
+
+> *"How are my funds doing since I last looked?"*
+
+## The solution
+
+Every Monday and Friday morning, a scheduled job wakes up, reads the current
+share price (стоимость пая) for the ten funds he actually owns, works out what
+changed, builds a clean Excel file, and drops it into his Telegram.
+
+No app to install. No login. No dashboard to remember to check. It just arrives.
+
+```
+  Mon / Fri 09:00
+        │
+        ▼
+  scrape 2 fund sites  ──►  compute Δ% per day + cumulative
+        │                            │
+        │                            ▼
+        │                   flag anything weird
+        ▼                            │
+   build .xlsx  ◄────────────────────┘
+        │
+        ▼
+   📲 Telegram
+```
+
+## What he actually receives
+
+A side-by-side Excel sheet, in Russian, readable in ten seconds:
+
+- **Blue side** — funds from wealthim.ru. **Green side** — funds from first-am.ru.
+- One row per trading day: the daily change, and the compounded change across the window.
+- Anything unusual (a move over 3%, or data that hasn't updated) is **flagged right in the sheet** so it can't be missed.
+
+## About this project
+
+This is a **vibecoded** project — I built it conversationally with
+[Claude Code](https://claude.com/claude-code), describing what I wanted, reading
+what came back, pushing on the parts that were wrong, and keeping what held up.
+The full build diary is in [BUILDLOG.md](docs/BUILDLOG.md), warts included.
+
+I'm early in my journey as a developer, and I learn by shipping things real
+people use. This one runs twice a week on a real machine for a real person, and
+has done since May 2026.
+
+If you want to learn Python from this codebase, [Teaching.md](docs/Teaching.md)
+is a guided walkthrough I wrote for exactly that.
+
+---
+
+## Try it
 
 ```bash
 git clone https://github.com/JustxDanny/ru-funds-report
 cd ru-funds-report
 python -m pip install -e .
-cp .env.example .env                          # then fill in the bot token
-python -m funds_report --days 4 --no-send     # dry run, prints xlsx path
-python -m funds_report                        # live run, sends to Telegram
+
+cp .env.example .env                        # add your Telegram bot token
+python -m funds_report --days 4 --no-send   # dry run — just prints the xlsx path
+python -m funds_report                      # live run — sends to Telegram
 ```
 
-`--days` defaults to 1 on Mondays, 4 on Fridays, 5 otherwise. Pass an explicit
-value to override.
+`--days` picks itself based on the weekday (1 on Monday, 4 on Friday, 5 otherwise).
+Pass a number to override.
 
-## What's in the report
+**You need:** Python 3.11+, and a Telegram bot token from
+[@BotFather](https://t.me/BotFather).
 
-A side-by-side Excel: blue side = wealthim.ru funds, green side = first-am.ru
-funds. For each fund: the previous-trading-day baseline, then a row per
-trading day in the window with daily Δ% and compounded cumulative Δ%. Anomalies
-(|Δ| ≥ 3% or stale data) are flagged inline.
-
-Russian throughout — director-readable. Numbers carry 4 decimals where the
-source provides them.
-
-## Architecture
-
-```
-funds.yaml ──► config.py
-                  │
-                  ▼
-   scrape.py ──► parsers.py     (HTTP + parse → list[(date, Decimal)])
-                  │
-                  ▼
-              metrics.py        (Δ%, cumulative, anomaly flags, cross-validation)
-                  │
-                  ▼
-              excel.py          (themed xlsx, two-column layout)
-                  │
-                  ▼
-              notify.py         (Telegram sendDocument, multi-recipient)
-                  │
-                  ▼
-                cli.py          (orchestration, logging, exit codes)
-```
-
-Pure-function parsers that take bytes/string and return decimals — easy to
-unit-test, no clock or network in the test path.
-
-## Decisions worth knowing
-
-**Wealthim authoritative source.** The product page renders 2-decimal NAV
-values; the same site exposes a hidden `xlsx.php` export endpoint with
-4-decimal data. We use the export — same site, more precision, simpler regex.
-Discovered by reading the page's hidden `<form id="export_xlsx">`.
-
-**First-am embedded JSON.** Their pages embed full NAV history as
-`var chartData = […]` inside `<script>`. We parse the literal directly rather
-than the rendered HTML table — closer to the data layer, drift-resistant.
-
-**Decimal, not float.** All NAV math goes through `decimal.Decimal`. A 0.0001%
-cross-validation tolerance catches inconsistencies between two independent
-total computations (direct ratio vs compounded daily factors).
-
-**No LLM at runtime.** An earlier prototype used `gemini-cli` to scrape the
-pages with `web_fetch`. It was non-deterministic — sometimes the tool
-silently degraded to Google search snippets. For numbers going to a director,
-non-deterministic is unacceptable. Replaced with regex/JSON parsing.
-
-**Loud failure over silent wrong numbers.** Bad NAV (≤0), parser miss, stale
-data — all raise. The cron will alert on a missed run; nobody emails the
-director "+0.00%" for a fund that actually crashed.
-
-## Operate
-
-```bash
-# Re-rank all 70+ funds by 1-year return (output → discovery.json):
-python scripts/discover_funds.py
-
-# After someone /starts the bot, capture their chat_id:
-python scripts/get_chat_ids.py
-
-# Run the report manually any day:
-python -m funds_report --days 4
-```
-
-Schedule via Windows Task Scheduler (Mon + Fri 09:00 local):
+## Run it on a schedule (Windows)
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install_task.ps1
 ```
 
-The installer renders `taskscheduler/funds-report.xml.tmpl` with this machine's
-absolute paths and registers the task. `WakeToRun=true` is set, so a sleeping
-PC wakes for the trigger. Logs land in `logs/`; uninstall with
+Registers a Task Scheduler job for Mon + Fri at 09:00. `WakeToRun` is on, so a
+sleeping PC wakes up for it. Logs go to `logs/`. Remove it with
 `schtasks /delete /tn funds-report /f`.
 
-## Tests
+---
 
-```bash
-python -m pytest         # 22 tests, ~0.2s, no network
+## How it's built
+
+```
+funds.yaml ──► config.py       which funds, and what counts as "weird"
+                  │
+                  ▼
+   scrape.py ──► parsers.py    fetch the pages → list of (date, price)
+                  │
+                  ▼
+              metrics.py       daily Δ%, cumulative Δ%, anomaly flags
+                  │
+                  ▼
+              excel.py         the themed two-column spreadsheet
+                  │
+                  ▼
+              notify.py        Telegram sendDocument, multiple recipients
+                  │
+                  ▼
+                cli.py         orchestration, logging, exit codes
 ```
 
-## Files
+The parsers are pure functions — bytes in, decimals out. No clock, no network in
+the test path, so the whole suite runs offline in about a fifth of a second.
+
+```bash
+python -m pytest      # 22 tests, ~0.2s, no network
+```
+
+## Four decisions I'd defend
+
+**Decimal, never float.** Every NAV calculation goes through `decimal.Decimal`.
+Two independent methods compute the same total (direct ratio vs. compounded
+daily factors) and must agree to within 0.0001% — otherwise the run fails. These
+numbers go to someone who makes money decisions with them; "close enough" isn't.
+
+**No LLM at runtime.** The first prototype used an AI CLI to fetch and read the
+pages. It was non-deterministic — sometimes it quietly fell back to search
+snippets instead of the real data. Fine for a demo, unacceptable for a number
+someone acts on. Replaced with plain regex and JSON parsing. *The AI helped me
+build it; it doesn't get to be part of it.*
+
+**Fail loudly, never quietly wrong.** A bad price, a parser that stopped
+matching, stale data — all raise and abort the run. A missed report gets noticed.
+A report that confidently says "+0.00%" about a fund that actually dropped does
+real damage.
+
+**Take the data from the cleanest layer available.** wealthim.ru renders prices
+at 2 decimals on the page, but exposes a hidden `xlsx.php` export with 4
+decimals — found by reading the page's own hidden form. first-am.ru embeds its
+full history as a JSON literal inside a `<script>` tag, so we parse that instead
+of the rendered table. Both are closer to the source and less likely to break
+when someone redesigns the page.
+
+---
+
+## Repo layout
 
 ```
 ru-funds-report/
-├── funds.yaml             10 production funds + sanity thresholds
-├── funds_report/          the package (config, parsers, scrape, metrics, excel, notify, cli)
-├── scripts/               operational helpers (discover, get_chat_ids)
-├── tests/                 pytest suite + tiny html fixture
-├── discovery.json         current 74-fund inventory with 1y returns
-├── Teaching.md            walkthrough for someone learning Python from this repo
-├── BUILDLOG.md            how it was built — agentic dev journal
+├── funds_report/      the package — config, parsers, scrape, metrics, excel, notify, cli
+├── scripts/           helpers — discover funds, capture chat IDs, install the task
+├── tests/             pytest suite + a small html fixture
+├── taskscheduler/     Windows Task Scheduler template
+├── docs/              BUILDLOG.md (how it was built) · Teaching.md (learn Python from it)
+├── data/              funds.yaml (the 10 tracked funds) · discovery.json (74-fund inventory)
 └── pyproject.toml
 ```
 
 ## License
 
-MIT.
+[MIT](LICENSE) — do what you like with it.
