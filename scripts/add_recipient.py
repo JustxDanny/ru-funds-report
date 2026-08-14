@@ -74,7 +74,7 @@ def main() -> int:
     seen = fetch_recipients(token)
     if not seen:
         print("  no messages found.")
-        print("  → ask the new recipient to open https://t.me/DenchikAgentBot and tap Start, then re-run.")
+        print("  → ask the new recipient to open https://t.me/<your_bot> and tap Start, then re-run.")
         return 1
 
     print("\nFound:")

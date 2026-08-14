@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-send", action="store_true", help="build xlsx but do not send")
     ap.add_argument("--chat-id", default=None,
                     help="override TELEGRAM_CHAT_IDS — comma separated")
-    ap.add_argument("--config", type=Path, default=ROOT / "funds.yaml")
+    ap.add_argument("--config", type=Path, default=ROOT / "data" / "funds.yaml")
     ap.add_argument("--env", type=Path, default=ROOT / ".env")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
@@ -61,6 +61,11 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )
+    # httpx logs the full request URL at INFO — and the Telegram URL carries the
+    # bot token in its path. That would write the live token into logs/*.log on
+    # every send. Keep it at WARNING; our own log lines say enough.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
     cfg = load_config(args.config)
     env = load_env(args.env)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import logging
+import re
 from pathlib import Path
 
 import httpx
@@ -20,10 +21,18 @@ class TelegramError(RuntimeError):
     """Telegram API returned non-OK. Caller logs and continues with other recipients."""
 
 
+_TG_TOKEN_URL = re.compile(r"(api\.telegram\.org/bot)[^/]+/", re.IGNORECASE)
+
+
 def _redact(s: str, token: str) -> str:
     # Token sits in the URL path; any httpx error message echoing the URL would leak it
-    # to logs/*.log (run_scheduled.ps1 redirects stderr → log file).
-    return s.replace(token, "[REDACTED_TOKEN]") if token else s
+    # to logs/*.log (run_scheduled.ps1 redirects stderr → log file). Exact-match the raw
+    # token, then also redact by URL shape — httpx may percent-encode the ':' (%3A), so
+    # the raw match alone would miss it.
+    if not token:
+        return s
+    s = s.replace(token, "[REDACTED_TOKEN]")
+    return _TG_TOKEN_URL.sub(r"\1[REDACTED_TOKEN]/", s)
 
 
 def send_document(token: str, chat_id: str, file_path: Path, caption: str,
@@ -36,7 +45,10 @@ def send_document(token: str, chat_id: str, file_path: Path, caption: str,
             r = httpx.post(url, files=files, data=data, timeout=timeout)
     except httpx.HTTPError as e:
         raise TelegramError(f"transport: {_redact(str(e), token)}") from None
-    body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+    try:
+        body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+    except ValueError:
+        body = {}
     if r.status_code != 200 or not body.get("ok"):
         raise TelegramError(f"HTTP {r.status_code}: {_redact(str(body or r.text), token)}")
     return body
